@@ -5,16 +5,22 @@
 #include <stdio.h>
 
 char word[] = "all";
-char sentence[] = "it’s all a matter of perspective";
+char sentence[] = "it’s all a matter of all perspective";
 const int w_len = 3;
-const int s_len = 32;
+const int s_len = 36;
 int res = -2;
+
+bool results[s_len];
+
 
 __device__ char dev_word[w_len];
 __device__ char dev_sentence[s_len];
 __device__ int dev_w_len;
 __device__ int dev_s_len;
 __device__ int dev_res;
+
+__device__ bool dev_results[s_len];
+
 
 __global__ void FindWord_1_GPU_CORE()
 {
@@ -43,6 +49,13 @@ __global__ void FindWord_N_GPU_CORE()
 	if (j == dev_w_len)
 		dev_res = i;
 }
+__global__ void FindWord_NxM_GPU_CORE() 
+{
+	dev_results[threadIdx.x] = true;
+
+	if (dev_sentence[threadIdx.x + threadIdx.y] != dev_word[threadIdx.y])
+		dev_results[threadIdx.x] = false;
+}
 
 int main()
 {
@@ -53,13 +66,14 @@ int main()
 
 
 	//FindWord_1_GPU_CORE << <1, 1 >> > ();
-	FindWord_N_GPU_CORE << <1, s_len - w_len + 1 >> > ();
+	//FindWord_N_GPU_CORE << <1, s_len - w_len + 1 >> > ();
+	FindWord_NxM_GPU_CORE << <1, dim3(s_len, w_len) >> > ();
 
 
-	cudaMemcpyFromSymbol(&res, dev_res, sizeof(int));
+	cudaMemcpyFromSymbol(results, dev_results, sizeof(dev_results));
 
 
-	printf("%d", res);
+	printf("%d", results);
 
 	return 0;
 }
