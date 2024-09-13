@@ -73,7 +73,10 @@ int main()
 	cudaMemcpyFromSymbol(results, dev_results, sizeof(dev_results));
 
 
-	printf("%d", results);
+	for (size_t i = 0; i < sizeof(results); i++)
+	{
+		printf("From %d. character: %d\n", i+1, results[i]);
+	}
 
 	return 0;
 }
