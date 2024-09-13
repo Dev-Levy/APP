@@ -3,11 +3,12 @@
 #include "device_launch_parameters.h"
 
 #include <stdio.h>
+#include <ctype.h>
 
-char word[] = "all";
-char sentence[] = "it’s all a matter of all perspective";
-const int w_len = 3;
-const int s_len = 36;
+char word[] = "z";
+char sentence[] = "Az Óbudai Egyetem 2013 végén elhatározta, hogy olyan kurzusokat indít, amelyeknek az a célja, hogy tantermi óra nélkül, csupán a kurzus anyagának otthoni feldolgozásával, határidőket betartva, de ezen belül saját időbeosztás szerint el lehessen sajátítani a tananyagot. Ez a tananyag is ilyen céllal készült.";
+const int w_len = 1;
+const int s_len = 308;
 int res = -2;
 
 bool results[s_len];
@@ -75,7 +76,8 @@ int main()
 
 	for (size_t i = 0; i < sizeof(results); i++)
 	{
-		printf("From %d. character: %d\n", i+1, results[i]);
+		if (results[i] == 1)
+			printf("Word found at this character: %d\n", i+1);
 	}
 
 	return 0;
