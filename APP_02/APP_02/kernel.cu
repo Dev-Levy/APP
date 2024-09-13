@@ -52,8 +52,8 @@ int main()
 	cudaMemcpyToSymbol(dev_s_len, &s_len, sizeof(int));
 
 
-	FindWord_1_GPU_CORE << <1, 1 >> > ();
-	//FindWord_N_GPU_CORE << <1, s_len - w_len >> > ();
+	//FindWord_1_GPU_CORE << <1, 1 >> > ();
+	FindWord_N_GPU_CORE << <1, s_len - w_len + 1 >> > ();
 
 
 	cudaMemcpyFromSymbol(&res, dev_res, sizeof(int));
