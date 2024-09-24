@@ -1,5 +1,4 @@
-﻿
-#include "cuda_runtime.h"
+﻿#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
 #include <stdio.h>
@@ -9,6 +8,7 @@
 
 int main()
 {
+
 	const int W = 600;
 	const int H = 400;
 	unsigned short img[W][H];
