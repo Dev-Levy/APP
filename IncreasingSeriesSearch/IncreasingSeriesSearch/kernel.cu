@@ -36,12 +36,9 @@ int main() {
 
 	cudaMemcpyToSymbol(dev_numArray, numArray, N * sizeof(int));
 	FindIncSeries << < 1, N - K >> > (K);
-	cudaError_t err = cudaMemcpyFromSymbol(&resIndex, dev_resIndex, sizeof(int));
-	if (err != cudaSuccess) {
-		printf("CUDA error: %s\n", cudaGetErrorString(err));
-	}
+	cudaMemcpyFromSymbol(&resIndex, dev_resIndex, sizeof(int));
 
-
+	//CPU
 	/*int index = -1;
 	for (size_t i = 0; i < N - K; i++)
 	{
@@ -56,6 +53,7 @@ int main() {
 			counter = 0;
 	}*/
 
+	//printing the nums
 	/*for (size_t i = 0; i < N; i++)
 	{
 		printf("%d:\t%d\n", i, numArray[i]);
