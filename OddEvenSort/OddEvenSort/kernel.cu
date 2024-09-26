@@ -16,12 +16,10 @@ __global__ void generateRandomNumbers(unsigned long seed) {
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < NumOfRandNumbers)
 	{
-		// Initialize the cuRAND state
 		curandState state;
 		curand_init(seed, i, 0, &state);
 
-		// Generate a random integer
-		dev_randNums[i] = curand(&state) % 500; // Example: random number between 0 and 99
+		dev_randNums[i] = curand(&state) % 500;
 	}
 }
 
