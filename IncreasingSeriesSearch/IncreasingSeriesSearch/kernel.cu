@@ -6,7 +6,7 @@
 #include <time.h>
 
 #define N 1000
-#define K 6
+#define K 5
 
 
 int numArray[N];
@@ -54,9 +54,9 @@ int main() {
 	}*/
 
 	//printing the nums
-	/*for (size_t i = 0; i < N; i++)
+	for (size_t i = 0; i < N; i++)
 	{
 		printf("%d:\t%d\n", i, numArray[i]);
-	}*/
-	printf("Index: %d.", resIndex);
+	}
+	printf("Index, ahol %d szam novekvo sorrendben van egymas utan: %d.", K, resIndex);
 }
