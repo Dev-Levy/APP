@@ -6,8 +6,8 @@
 #include <time.h>
 
 #define BLOCK_SIZE 500
-#define N 10499
-#define K 10
+#define N 10410
+#define K 6
 
 
 int numArray[N];
@@ -31,14 +31,20 @@ __global__ void FindIncSeries_N(int k) {
 
 __global__ void FindIncSeries_N_BLOCKS(int k) {
 
+	__shared__ int shr_numArray[N];
 	int x = threadIdx.x;
 	int bl_x = blockIdx.x;
 	int counter = 0;
 
-	if (bl_x == N / BLOCK_SIZE && x > N % BLOCK_SIZE - k)
+	int i = x + bl_x * blockDim.x;
+	if (i < N)
+		shr_numArray[i] = dev_numArray[i];
+
+	//túlindex védelem
+	if (bl_x == N / blockDim.x + 1 && x > N % blockDim.x - k)
 		return;
 
-	while (counter < k - 1 && dev_numArray[bl_x * BLOCK_SIZE + x + counter] < dev_numArray[bl_x * BLOCK_SIZE + x + counter + 1]) {
+	while (counter < k - 1 && shr_numArray[bl_x * blockDim.x + x + counter] < shr_numArray[bl_x * blockDim.x + x + counter + 1]) {
 		counter++;
 	}
 	if (counter == k - 1)
