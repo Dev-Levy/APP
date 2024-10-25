@@ -28,6 +28,7 @@ __global__ void OverLayingRed() {
 	for (int y = 0; y < dev_height; y++) {
 		for (int x = 0; x < dev_width; x++) {
 			int pixelIndex = (y * dev_width + x) * dev_channels;
+			dev_img[pixelIndex + 0] = 0;
 			dev_img[pixelIndex + 1] = 0;
 			dev_img[pixelIndex + 2] = 0;
 		}
@@ -50,6 +51,8 @@ int main() {
 	OverLayingRed << <1, 1 >> > ();
 
 	cudaMemcpy(img, dev_img, imgSize, cudaMemcpyDeviceToHost);
+
+	cudaError_t err = cudaGetLastError();
 
 
 	//3D glitch implementation
