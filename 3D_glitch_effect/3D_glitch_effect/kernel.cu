@@ -11,6 +11,17 @@
 #include <stdio.h>
 #include <string>
 
+#define MIN(a,b) ((a)<(b)?(a):(b))
+#define MAX(a,b) ((a)>(b)?(a):(b))
+
+typedef struct rgb {
+	float r, g, b;
+} RGB;
+
+typedef struct hsl {
+	float h, s, l;
+} HSL;
+
 int width, height, channels;
 double hsl_H, hsl_S, hsl_L;
 unsigned char* img;
@@ -47,150 +58,77 @@ void reset() {
 	printf("\033[0m"); //style reset
 }
 
-void convert_RGB_To_HSL(int red, int green, int blue, double* H, double* S, double* L) {
-	double red_perc = red / 255.0;
-	double green_perc = green / 255.0;
-	double blue_perc = blue / 255.0;
+HSL rgb2hsl(float r, float g, float b) {
 
-	double max, min;
+	HSL result;
 
-	//max
-	if (red_perc > green_perc && red_perc > blue_perc)
-		max = red_perc;
-	else if (green_perc > red_perc && green_perc > blue_perc)
-		max = green_perc;
-	else if (blue_perc > green_perc && blue_perc > red_perc)
-		max = blue_perc;
+	r /= 255;
+	g /= 255;
+	b /= 255;
 
-	//min
-	if (red_perc < green_perc && red_perc < blue_perc)
-		min = red_perc;
-	else if (green_perc < red_perc && green_perc < blue_perc)
-		min = green_perc;
-	else if (blue_perc < green_perc && blue_perc < red_perc)
-		min = blue_perc;
-	else {
-		max = red_perc;
-		min = red_perc;
-	}
+	float max = MAX(MAX(r, g), b);
+	float min = MIN(MIN(r, g), b);
 
-	//Luminocity
-	*L = (max + min) / 2.0;
+	result.h = result.s = result.l = (max + min) / 2;
 
-	//Saturation
 	if (max == min) {
-		*S = 0;
-		*H = 0;
+		result.h = result.s = 0; // achromatic
 	}
-	else if (*L <= 0.5) {
-		*S = (max - min) / (max + min);
-	}
-	else if (*L > 0.5) {
-		*S = (max - min) / (2.0 - max - min);
-	}
+	else {
+		float d = max - min;
+		result.s = (result.l > 0.5) ? d / (2 - max - min) : d / (max + min);
 
-	//Hue
-	double H_double;
-	if (max == red_perc) {
-		H_double = (green_perc - blue_perc) / (max - min);
-	}
-	else if (max == green_perc) {
-		H_double = 2.0 + (blue_perc - red_perc) / (max - min);
-	}
-	else if (max == blue_perc) {
-		H_double = 4.0 + (red_perc - green_perc) / (max - min);
+		if (max == r) {
+			result.h = (g - b) / d + (g < b ? 6 : 0);
+		}
+		else if (max == g) {
+			result.h = (b - r) / d + 2;
+		}
+		else if (max == b) {
+			result.h = (r - g) / d + 4;
+		}
+
+		result.h /= 6;
 	}
 
-	*H = H_double * 60.0;
-	if (*H < 0)
-		*H += 360;
-}
-void convert_HSL_To_RGB(double H, double S, double L, unsigned char* red, unsigned char* green, unsigned char* blue) {
-	if (S == 0.0)
-	{
-		*red = L * 255.0;
-		*green = L * 255.0;
-		*blue = L * 255.0;
-	}
+	return result;
 
-	double C = (1 - std::abs(2 * L - 1)) * S;
-
-	auto qwe = static_cast<int>(H / 60) % 2 - 1;
-	auto asd = 1 - std::abs(qwe);
-
-	double X = C * static_cast<double>(asd);
-
-	double M = L - (C / 2);
-
-	double temp_R;
-	double temp_G;
-	double temp_B;
-
-	if (H >= 0 && H < 60) {
-		temp_R = C; temp_G = X;	temp_B = 0;
-	}
-	else if (H >= 60 && H < 120) {
-		temp_R = X; temp_G = C;	temp_B = 0;
-	}
-	else if (H >= 120 && H < 180) {
-		temp_R = 0; temp_G = C;	temp_B = X;
-	}
-	else if (H >= 180 && H < 240) {
-		temp_R = 0; temp_G = X;	temp_B = C;
-	}
-	else if (H >= 240 && H < 300) {
-		temp_R = X; temp_G = 0;	temp_B = C;
-	}
-	else if (H >= 300 && H < 360) {
-		temp_R = C; temp_G = 0;	temp_B = X;
-	}
-
-	*red = (temp_R + M) * 255.0;
-	*green = (temp_G + M) * 255.0;
-	*blue = (temp_B + M) * 255.0;
-
-
-	/*double temp1;
-	if (L <= 0.5)
-		temp1 = L * (1.0 + S);
-	else
-		temp1 = L + S - (L * S);
-
-	double temp2 = 2.0 * L - temp1;
-
-	double H_perc = H / 360.0;
-	double temp_R = H_perc + 1.0 / 3.0;
-	double temp_G = H_perc;
-	double temp_B = H_perc - 1.0 / 3.0;
-
-	clamp_zero_to_one(&temp_R);
-	clamp_zero_to_one(&temp_G);
-	clamp_zero_to_one(&temp_B);
-
-	calculateRGB(&temp_R, temp1, temp2);
-	calculateRGB(&temp_G, temp1, temp2);
-	calculateRGB(&temp_B, temp1, temp2);
-
-	*red = temp_R * 255.0;
-	*green = temp_G * 255.0;
-	*blue = temp_B * 255.0;*/
 }
 
-void clamp_zero_to_one(double* num) {
-	if (*num < 0)
-		*num += 1.0;
-	else if (*num > 1)
-		*num -= 1.0;
+float hue2rgb(float p, float q, float t) {
+
+	if (t < 0)
+		t += 1;
+	if (t > 1)
+		t -= 1;
+	if (t < 1. / 6)
+		return p + (q - p) * 6 * t;
+	if (t < 1. / 2)
+		return q;
+	if (t < 2. / 3)
+		return p + (q - p) * (2. / 3 - t) * 6;
+
+	return p;
+
 }
-void calculateRGB(double* pRGB, double temp1, double temp2) {
-	if (6 * (*pRGB) < 1)
-		*pRGB = (temp2 + (temp1 - temp2)) * 6 * (*pRGB);
-	else if (2 * (*pRGB) < 1)
-		*pRGB = temp1;
-	else if (3 * (*pRGB) < 2)
-		*pRGB = (temp2 + (temp1 - temp2)) * 6 * (2.0 / 3.0 - *pRGB);
-	else
-		*pRGB = temp2;
+
+RGB hsl2rgb(float h, float s, float l) {
+
+	RGB result;
+
+	if (0 == s) {
+		result.r = result.g = result.b = l; // achromatic
+	}
+	else {
+		float q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+		float p = 2 * l - q;
+		result.r = hue2rgb(p, q, h + 1. / 3) * 255;
+		result.g = hue2rgb(p, q, h) * 255;
+		result.b = hue2rgb(p, q, h - 1. / 3) * 255;
+	}
+
+	return result;
+
 }
 #pragma endregion
 
@@ -212,7 +150,6 @@ __global__ void GrayScaling(unsigned char* d_img, int width, int height, int cha
 		d_img[idx + 2] = gray;
 	}
 }
-
 void GrayScalingSetup(unsigned char* img, int width, int height, int channels) {
 
 	size_t imgSize = width * height * channels * sizeof(unsigned char);
@@ -241,7 +178,6 @@ __global__ void OverLayingRed(unsigned char* d_img, int width, int height, int c
 		//d_img[idx + 2] = 0;
 	}
 }
-
 void OverlaySetup(unsigned char* d_img, int width, int height, int channels) {
 	size_t imgSize = width * height * channels * sizeof(unsigned char);
 	cudaMalloc(&dev_img, imgSize);
@@ -262,7 +198,6 @@ int main() {
 
 	loadPNG("C:\\Users\\horga\\Downloads\\lil_test.png");
 
-	OverlaySetup(img, width, height, channels);
 
 	savePNG("csudakép.png");
 	return 0;
