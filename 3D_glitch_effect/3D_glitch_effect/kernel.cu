@@ -8,6 +8,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#include <sstream>
+
 #include <stdio.h>
 #include <string>
 
@@ -23,8 +25,8 @@ typedef struct hsl {
 } HSL;
 
 int width, height, channels;
-double hsl_H, hsl_S, hsl_L;
 unsigned char* img;
+unsigned long size, size_w_channels;
 
 __device__ unsigned char* dev_img;
 
@@ -145,9 +147,17 @@ __global__ void GrayScaling(unsigned char* d_img, int width, int height, int cha
 
 		unsigned char gray = static_cast<unsigned char>(0.299f * r + 0.587f * g + 0.114f * b);
 
-		d_img[idx + 0] = gray;
-		d_img[idx + 1] = gray;
-		d_img[idx + 2] = gray;
+		if (gray <= 51)
+			dev_img[idx] = 35; //hashtag
+		else if (gray > 51 && gray <= 102)
+			dev_img[idx] = 176; //light
+		else if (gray > 102 && gray <= 153)
+			dev_img[idx] = 177; //medium
+		else if (gray > 153 && gray <= 204)
+			dev_img[idx] = 178; //dark
+		else
+			dev_img[idx] = 219; //full
+
 	}
 }
 void GrayScalingSetup(unsigned char* img, int width, int height, int channels) {
@@ -156,40 +166,17 @@ void GrayScalingSetup(unsigned char* img, int width, int height, int channels) {
 	cudaMalloc(&dev_img, imgSize);
 
 	cudaMemcpy(dev_img, img, imgSize, cudaMemcpyHostToDevice);
+	cudaError_t err = cudaGetLastError();
 
 	dim3 blockSize(16, 16);
 	dim3 gridSize((width + blockSize.x - 1) / blockSize.x, (height + blockSize.y - 1) / blockSize.y);
 
 	GrayScaling << <gridSize, blockSize >> > (dev_img, width, height, channels);
+	err = cudaGetLastError();
+
 
 	cudaMemcpy(img, dev_img, imgSize, cudaMemcpyDeviceToHost);
-
-	cudaFree(dev_img);
-}
-
-__global__ void OverLayingRed(unsigned char* d_img, int width, int height, int channels) {
-	int x = blockIdx.x * blockDim.x + threadIdx.x;
-	int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-	if (x < width && y < height) {
-		int idx = (y * width + x) * channels;
-		d_img[idx + 0] = 0;
-		//d_img[idx + 1] = 0;
-		//d_img[idx + 2] = 0;
-	}
-}
-void OverlaySetup(unsigned char* d_img, int width, int height, int channels) {
-	size_t imgSize = width * height * channels * sizeof(unsigned char);
-	cudaMalloc(&dev_img, imgSize);
-
-	cudaMemcpy(dev_img, img, imgSize, cudaMemcpyHostToDevice);
-
-	dim3 blockSize(16, 16);
-	dim3 gridSize((width + blockSize.x - 1) / blockSize.x, (height + blockSize.y - 1) / blockSize.y);
-
-	OverLayingRed << <gridSize, blockSize >> > (dev_img, width, height, channels);
-
-	cudaMemcpy(img, dev_img, imgSize, cudaMemcpyDeviceToHost);
+	err = cudaGetLastError();
 
 	cudaFree(dev_img);
 }
@@ -197,8 +184,20 @@ void OverlaySetup(unsigned char* d_img, int width, int height, int channels) {
 int main() {
 
 	loadPNG("C:\\Users\\horga\\Downloads\\lil_test.png");
+	size = width * height * sizeof(unsigned char);
+	size_w_channels = size * channels;
+
+	GrayScalingSetup(img, width, height, channels);
 
 
-	savePNG("csudakép.png");
+	std::stringstream ss;
+
+	for (size_t i = 0; i < size; i++)
+	{
+		ss << img[i];
+	}
+
+
+	//savePNG("csudakép.png");
 	return 0;
 }
