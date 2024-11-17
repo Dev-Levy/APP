@@ -30,9 +30,9 @@ void saveTXT() {
 
 	for (size_t i = 0; i < pixelCount; i++)
 	{
-		oss << img[i];
 		if (i % width == 0)
 			oss << std::endl;
+		oss << img[i];
 	}
 	std::ofstream outputFile("csudakep.txt");
 	std::string s = oss.str();
@@ -54,15 +54,15 @@ __global__ void Pixels_To_ASCII_Kernel(unsigned char* d_img, int width, int heig
 		unsigned char gray = static_cast<unsigned char>(0.299f * r + 0.587f * g + 0.114f * b);
 
 		if (gray <= 51)
-			dev_img[idx] = 35; //hashtag
+			d_img[idx] = 35; //hashtag
 		else if (gray > 51 && gray <= 102)
-			dev_img[idx] = 176; //light
+			d_img[idx] = 176; //light
 		else if (gray > 102 && gray <= 153)
-			dev_img[idx] = 177; //medium
+			d_img[idx] = 177; //medium
 		else if (gray > 153 && gray <= 204)
-			dev_img[idx] = 178; //dark
+			d_img[idx] = 178; //dark
 		else
-			dev_img[idx] = 219; //full
+			d_img[idx] = 219; //full
 
 	}
 
@@ -76,7 +76,8 @@ void Pixels_To_ASCII(unsigned char* img, int width, int height, int channels) {
 	cudaMemcpy(dev_img, img, imgSize, cudaMemcpyHostToDevice);
 
 	//kernel call
-
+	int blockSize = 192;
+	int blockNum;
 
 	//copy back and free
 	cudaMemcpy(img, dev_img, imgSize, cudaMemcpyDeviceToHost);
@@ -85,9 +86,10 @@ void Pixels_To_ASCII(unsigned char* img, int width, int height, int channels) {
 
 int main() {
 
-	loadPNG("C:\\Users\\horga\\Downloads\\test.png");
+	loadPNG("C:\\Users\\horga\\Downloads\\lil_test.png");
 
 	Pixels_To_ASCII(img, width, height, channels);
 
+	saveTXT();
 	return 0;
 }
