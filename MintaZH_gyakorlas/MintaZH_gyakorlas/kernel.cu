@@ -4,17 +4,21 @@
 #include <stdio.h>
 #include <random>
 #include <vector>
-#define N 100
+#define N 10000
+#define BLOCK_SIZE 512
+
 
 __device__ int dev_minIdx;
 
 __global__ void MinimumMulFind_N(int* dev_v1) {
-	int x = threadIdx.x;
+	int x = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	__shared__ size_t min;
 
 
 	if (x == 0)
 		min = SIZE_MAX;
+	else if (x > N)
+		return;
 	__syncthreads();
 
 	size_t mul = 1;
@@ -23,10 +27,8 @@ __global__ void MinimumMulFind_N(int* dev_v1) {
 		mul *= dev_v1[x + i];
 	}
 
-	size_t akt = atomicMin(&min, mul);
-
-	if (akt == mul)
-		dev_minIdx = x;
+	if (atomicMin(&min, mul) > mul)
+		atomicExch(&dev_minIdx, x);
 }
 
 
@@ -37,15 +39,15 @@ int main() {
 	std::uniform_int_distribution<>dist(1, 10);
 
 	//feltöltés
-	std::vector<int> v1 = { 1,4,3,1,8,9,7,6,1,5,5,1,1,5,2,6,6,1,4,1,9,8,6,7,3,6,5,6,8,8,1,1,3,2,1,7,6,1,3,6 };
-	/*for (size_t i = 0; i < N; i++)
-		v1.push_back(dist(gen));*/
+	std::vector<int> v1;
+	for (size_t i = 0; i < N; i++)
+		v1.push_back(dist(gen));
 
 
-		//CPU
+	//CPU
 	size_t min = SIZE_MAX;
 	int minIdx = -1;
-	for (size_t i = 0; i < v1.size() - 10; i++)
+	for (size_t i = 0; i < N - 10; i++)
 	{
 		size_t current = 1;
 		for (size_t j = 0; j < 10; j++)
@@ -62,6 +64,12 @@ int main() {
 	//memory allocation
 	int* dev_v1;
 	int GPU_minIdx;
+
+	cudaEvent_t start_event, end_event;
+	cudaEventCreate(&start_event);
+	cudaEventCreate(&end_event);
+
+
 	cudaMalloc((void**)&dev_v1, N * sizeof(int));
 	cudaError_t err = cudaGetLastError();
 
@@ -70,7 +78,12 @@ int main() {
 	cudaMemcpy(dev_v1, &v1[0], N * sizeof(int), cudaMemcpyHostToDevice);
 	err = cudaGetLastError();
 
-	MinimumMulFind_N << <1, v1.size() - 10 >> > (dev_v1);
+	cudaEventRecord(start_event, 0);
+	MinimumMulFind_N << <N / BLOCK_SIZE + 1, BLOCK_SIZE >> > (dev_v1);
+	cudaEventRecord(end_event, 0);
+
+	cudaEventSynchronize(start_event);
+	cudaEventSynchronize(end_event);
 	cudaDeviceSynchronize();
 	err = cudaGetLastError();
 
@@ -79,10 +92,22 @@ int main() {
 
 	cudaFree(dev_v1);
 
-	for (size_t i = 0; i < v1.size(); i++)
+
+	float elapsed_ms;
+	cudaEventElapsedTime(&elapsed_ms, start_event, end_event);
+
+
+	/*for (size_t i = 0; i < N; i++)
 	{
 		printf("%llu: %d\n", i, v1[i]);
-	}
+	}*/
 	printf("\n%d", minIdx);
 	printf("\n%d", GPU_minIdx);
+
+
+	cudaDeviceProp deviceProp;
+	cudaGetDeviceProperties(&deviceProp, 0);
+	int maxThreads = deviceProp.reg;
+
+	printf("\n%d", maxThreads);
 }
