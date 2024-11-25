@@ -9,8 +9,7 @@
 
 #include "fstream"
 #include "sstream"
-
-
+#include "iostream"
 
 int width, height, channels;
 unsigned char* img;
@@ -26,45 +25,67 @@ void loadPNG(const char* imgpath) {
 }
 void saveTXT() {
 	size_t pixelCount = width * height;
-	std::ostringstream oss;
+	std::ofstream outputFile("csudakep.txt", std::ios::binary);
 
 	for (size_t i = 0; i < pixelCount; i++)
 	{
-		if (i % width == 0)
-			oss << std::endl;
-		oss << img[i];
-	}
-	std::ofstream outputFile("csudakep.txt");
-	std::string s = oss.str();
-	outputFile << s;
+		if (i % width == 0) {
+			outputFile << std::endl;
+			std::cout << std::endl;
+		}
 
+		switch (img[i])
+		{
+		case 35:
+			outputFile << "#";
+			std::cout << static_cast<char>(35);
+			break;
+		case 176:
+			outputFile << "░";
+			std::cout << static_cast<char>(35);
+			break;
+		case 177:
+			outputFile << "▒";
+			std::cout << static_cast<char>(35);
+			break;
+		case 178:
+			outputFile << "▓";
+			std::cout << static_cast<char>(35);
+			break;
+		case 219:
+			outputFile << "█";
+			std::cout << static_cast<char>(35);
+			break;
+		default:
+			break;
+		}
+	}
 }
 
 __global__ void Pixels_To_ASCII_Kernel(unsigned char* d_img, int width, int height, int channels) {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-	if (x < width && y < height) {
-		int idx = (y * width + x) * channels;
+	if (x > width || y > height) return;
 
-		unsigned char r = d_img[idx + 0];
-		unsigned char g = d_img[idx + 1];
-		unsigned char b = d_img[idx + 2];
+	int idx = (y * width + x) * channels;
 
-		unsigned char gray = static_cast<unsigned char>(0.299f * r + 0.587f * g + 0.114f * b);
+	unsigned char r = d_img[idx + 0];
+	unsigned char g = d_img[idx + 1];
+	unsigned char b = d_img[idx + 2];
 
-		if (gray <= 51)
-			d_img[idx] = 35; //hashtag
-		else if (gray > 51 && gray <= 102)
-			d_img[idx] = 176; //light
-		else if (gray > 102 && gray <= 153)
-			d_img[idx] = 177; //medium
-		else if (gray > 153 && gray <= 204)
-			d_img[idx] = 178; //dark
-		else
-			d_img[idx] = 219; //full
+	unsigned char gray = static_cast<unsigned char>(0.299f * r + 0.587f * g + 0.114f * b);
 
-	}
+	if (gray <= 51)
+		d_img[idx] = 35; //hashtag #
+	else if (gray > 51 && gray <= 102)
+		d_img[idx] = 176; //light 
+	else if (gray > 102 && gray <= 153)
+		d_img[idx] = 177; //medium
+	else if (gray > 153 && gray <= 204)
+		d_img[idx] = 178; //dark
+	else
+		d_img[idx] = 219; //full
 
 }
 
@@ -76,8 +97,12 @@ void Pixels_To_ASCII(unsigned char* img, int width, int height, int channels) {
 	cudaMemcpy(dev_img, img, imgSize, cudaMemcpyHostToDevice);
 
 	//kernel call
-	int blockSize = 192;
-	int blockNum;
+	dim3 blockSize(16, 16);
+	dim3 gridSize((width + blockSize.x - 1) / blockSize.x, (height + blockSize.y - 1) / blockSize.y);
+
+	Pixels_To_ASCII_Kernel << <gridSize, blockSize >> > (dev_img, width, height, channels);
+	cudaDeviceSynchronize();
+	cudaError_t err = cudaGetLastError();
 
 	//copy back and free
 	cudaMemcpy(img, dev_img, imgSize, cudaMemcpyDeviceToHost);
